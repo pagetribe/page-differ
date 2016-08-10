@@ -1,0 +1,39 @@
+TODO:
+
+
+
+//installed phantomjs and it worked - seems to be deprecated in favor of phantomjs-prebuilt (not tried on fresh branch in openshift)
+npm install phantomjs-prebuilt --save
+
+
+could i save the data locally in json as a way to monitor a url
+{
+  price: 89,
+  date: Date(),
+  price: 89,
+  date: Date()....
+}
+
+var fs = require('fs')
+var page = require('webpage').create()
+var dataFileSource = './price-data.json';
+
+page.open('https://www.appliancesonline.com.au/sunbeam-electric-ceramic-heater-he2125/', function(status) {
+  var price = page.evaluate(function() {
+    return document.querySelector('.aol-product-price').innerText
+  })
+  console.log('AOL product price class = ', price)
+  phantom.exit()
+  writeData({price: price, date: Date()})
+})
+
+
+function writeData(data) {
+  fs.writeFile(fileSource, JSON.stringify(data), function(err) {
+     if (err) {
+         return console.error(err)
+     }
+     console.log(data)
+     console.log("Data written to log successfully!")
+  })
+}
