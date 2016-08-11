@@ -1,51 +1,67 @@
 var fs = require('fs')
-var dataFileSource = './price-data.json'
+
 let logDir = process.env.OPENSHIFT_LOG_DIR || __dirname + '/logs'
-var data = require(logDir + '/price-data.json');
+var dataFileSource = logDir + '/price-data.json'
+var data = require(dataFileSource);
+
 var path = require('path')
 var childProcess = require('child_process')
 var phantomjs = require('phantomjs-prebuilt')
 var binPath = phantomjs.path
-var dataFileSource = './price-data.json'
 var dollarRegEx = new RegExp('\\$[\\d]*\\d+(.\\d{1,2})?', 'm')
 
-
-console.log(data.urls[0]["https://www.appliancesonline.com.au/sunbeam-electric-ceramic-heater-he2125/"])
-console.log(Object.keys(data.urls[0]))
-data.urls[0]["https://www.appliancesonline.com.au/sunbeam-electric-ceramic-heater-he2125/"].push({"price": 3, "date": Date()})
+var url = "https://www.appliancesonline.com.au/sunbeam-electric-ceramic-heater-he2125/"
 
 
-var childArgs = [
-  path.join(__dirname, 'phantomjs-script.js'),
-  'some other argument (passed to phantomjs script) add the url here!'
-]
+getPriceFromUrl(url, createJsonPriceData)
 
-childProcess.execFile(binPath, childArgs, function(err, stdout, stderr) {
-  console.log('stdout:', stdout)
-  var bodyText = stdout
-  if(bodyText !== "\n") { //check if there is a body before proceding
-    createJsonPriceData(bodyText)
+function getPriceFromUrl(url, callback) {
+  var childArgs = phantomScriptArgs(url)
+  executePhantomScript(childArgs, callback)
+
+  function phantomScriptArgs(url) {
+    return [ path.join(__dirname, 'phantomjs-script.js'), url ]
   }
-})
 
-function createJsonPriceData(bodyText) {
-  var price = extractPriceFromBody(bodyText)
-  var priceDate = { price: price, data: Date() }
-  var url = "https://www.appliancesonline.com.au/sunbeam-electric-ceramic-heater-he2125/"
-  data.urls[0][url].push(priceDate)
+  function executePhantomScript(childArgs, callback) {
+    childProcess.execFile(binPath, childArgs, callback)
+  }
+}
+
+function processBodyText(bodyText) {
+  if(hasContent(bodyText)) {
+    var price = extractPriceFromBody(bodyText)
+    var priceDate = { price: price, data: Date() }
+    data.urls[0][url].push(priceDate) //push priceData onto main data
+    // data.urls[0]["https://www.appliancesonline.com.au/sunbeam-electric-ceramic-heater-he2125/"].push({"price": 3, "date": Date()})
+  }
+
+  function hasContent(text) {
+    return text !== "\n"
+  }
+
+  function extractPriceFromBody(bodyText) {
+    return dollarRegEx.exec(bodyText)[0]
+  }
+}
+
+function createJsonPriceData(err, bodyText, stderr) {
+  if(err) {
+    console.log(err)
+    return
+  }
+
+  processBodyText(bodyText)
   writeData()
+
+  function writeData() {
+    fs.writeFile(dataFileSource, JSON.stringify(data, null, 2), function (err) {
+      if (err) return console.log(err);
+      console.log(`Data written to ${dataFileSource} successfully!`)
+    });
+  }
 }
 
-function extractPriceFromBody(bodyText) {
-  return dollarRegEx.exec(bodyText)[0]
-}
-
-function writeData() {
-  fs.writeFile(dataFileSource, JSON.stringify(data, null, 2), function (err) {
-    if (err) return console.log(err);
-    console.log(`Data written to ${dataFileSource} successfully!`)
-  });
-}
 
 
 // var Diff = require('text-diff')
