@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+
+node ${OPENSHIFT_REPO_DIR}/app.js
+
